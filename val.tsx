@@ -1,5 +1,5 @@
 import React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, Check, X } from 'lucide-react';
@@ -31,24 +31,30 @@ export default function PasswordForm() {
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
-    watch
+    control
   } = useForm<PasswordFormData>({
     resolver: zodResolver(passwordSchema),
     mode: 'onChange'
   });
 
-  const password = watch('password') || '';
-  const confirmPassword = watch('confirmPassword') || '';
+  // Use useWatch to properly track form changes and trigger re-renders
+  const watchedValues = useWatch({
+    control,
+    name: ['password', 'confirmPassword'],
+    defaultValue: ['', '']
+  });
 
-  // Validation checks
-  const validations = {
-    minLength: password.length >= 8,
-    hasUppercase: /[A-Z]/.test(password),
-    hasLowercase: /[a-z]/.test(password),
-    hasNumber: /[0-9]/.test(password),
-    passwordsMatch: password === confirmPassword && confirmPassword.length > 0,
-    bothNotEmpty: password.length > 0 && confirmPassword.length > 0
-  };
+  const [password, confirmPassword] = watchedValues;
+
+  // Calculate validations (will re-run on every render when watchedValues change)
+  const validations = React.useMemo(() => ({
+    minLength: (password || '').length >= 8,
+    hasUppercase: /[A-Z]/.test(password || ''),
+    hasLowercase: /[a-z]/.test(password || ''),
+    hasNumber: /[0-9]/.test(password || ''),
+    passwordsMatch: password === confirmPassword && (confirmPassword || '').length > 0,
+    bothNotEmpty: (password || '').length > 0 && (confirmPassword || '').length > 0
+  }), [password, confirmPassword]);
 
   const onSubmit = async (data: PasswordFormData) => {
     // Simulate API call
